@@ -12,8 +12,8 @@ Display one character at a time in the same position<br>
 - You can set text string from the USB serial<br>
 
 ## License
-Souce code : Apache License 2.0
-Othes :  Creative Commons BY-SA
+Souce code : Apache License 2.0<br>
+Othes :  Creative Commons BY-SA<br>
 
 ## Blog (in Japanese)
 http://android.ohwada.jp/archives/5405
