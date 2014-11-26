@@ -2,7 +2,8 @@ Seven-Segment LED Sign Board
 ===============
 
 Electric Sign Board using 6 Seven-Segment LEDs.<br>
-Controlled by Arduino.
+Controlled by Arduino.<br>
+I make the case that I cut acrylic plate by laser cutter.<br>
 
 ## Feature
 - This can display the alphabet as well as numbers<br>
