@@ -9,7 +9,7 @@ The case that is cut acrylic plate by laser cutter.<br>
 - This have two mode<br>
 Scroll characters from the right to the left<br>
 Display one character at a time in the same position<br>
-- You can set text String from the USB serial<br>
+- You can set text string from the USB serial<br>
 
 ## Blog (in Japanese)
 http://android.ohwada.jp/archives/5405
