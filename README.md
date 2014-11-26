@@ -2,7 +2,7 @@ Seven-Segment LED Sign Board
 ===============
 
 Electric Sign Board using 6 Seven-Segment LEDs.<br>
-Controller is arduino.
+Controlled by Arduino.
 
 ## Blog (in Japanese)
 http://android.ohwada.jp/archives/5405
