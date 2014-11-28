@@ -6,11 +6,33 @@
 // command
 // (1) set text
 // example #abc$
-// start #
-// end $
-// text : 0-9 a-z A-Z SAPCE
+// # : start
+// $ : end
+// 0-9 a-z A-Z SAPCE : text
+//
+// (2) set sensor value
+// example t11$ h22$ p33$ l44$ n66$
+// t : Temperature
+// h : Humidity
+// p : Air Pressure
+// l : Light
+// n : Noise 
+// $ : end
+// 0-9 : value
 
 #include <EEPROM.h>
+
+// 0 : disable set text
+// 1 : enable set text
+#define MODE_TEXT  0
+
+// 0 : scroll
+// 1 : blink
+#define MODE_BLINK  0
+
+// 0 : scroll
+// 1 : sensor
+#define MODE_SENSOR  1
 
 #define SERIAL_SPEED  9600 
 #define SEG_NUM  8
@@ -18,9 +40,22 @@
 #define DELAY_SEG  3
 #define DELAY_TEST  500
 #define MAX_LOOP  200
+#define MAX_LOOP_SENSOR  800
 #define SPACE  ' '
 #define MAX_TEXT  100
 
+// sensor
+#define SENSOR_NUM  5
+#define SENSOR_NULL  -1
+#define SENSOR_T  0
+#define SENSOR_H  1
+#define SENSOR_P  2
+#define SENSOR_L  3
+#define SENSOR_N  4
+
+// sensor
+const char SENSOR_MARK[ SENSOR_NUM ] = {'T','H','P','L','N'};
+    	
 // 7 Seg       A B C D E F G p
 // Ardunino 6 5 4 3 2 8 9 7
 const int CATHODE[SEG_NUM] = {6,5,4,3,2,8,9,7};
@@ -173,12 +208,21 @@ int text_index = 0;
 int pat_index[ MAX_TEXT ];
 int pat_length = 0;
 
+// sensor index buffer	
+int sensor_index[ SENSOR_NUM ][  ROW_NUM ];
+
+// index offset for scroll mode
 int index_offset = 0;
-int text_cnt = 0;
+
+// display pattern
+int disp_cnt = 0;
+
+// loop count
 int loop_cnt = 0;
 
 // serial status
-boolean is_reading = false;
+boolean is_recieving = false;
+int sensor_recieving = SENSOR_NULL;
 
 /**
  * === setup ===
@@ -203,6 +247,9 @@ void setup() {
 	} else {
 		// set from buffer, if eeprom is written
 		convert_index( text_buf, text_index );
+	}
+	for ( i=0; i<SENSOR_NUM; i++ ) {
+		sensor_index[ i ][ 0 ] = search_hash( SENSOR_MARK[ i ] );
 	}			  	  	  	  	  	  	  	  	  	  	  	  	  	  	             
 }
 
@@ -210,20 +257,39 @@ void setup() {
  * === loop ===
  */ 
 void loop() {
-	loop_serial();
-	loop_one_char();
+	#if MODE_TEXT
+		loop_serial();
+	#endif
+	#if MODE_SENSOR
+		loop_serial_sensor();
+		loop_sensor();
+	#else
+		#if MODE_BLINK
+			loop_bilnk();
+		#else
+			loop_scroll();
+		#endif
+	#endif		
 }
 
 /**
- * Display one character at a time
+ * Bilnk one character at a time
+ *
+ * FabLab
+ * F
+ *  a
+ *   b
+ *    F
+ *     a
+ *      b 
  */ 
-void loop_one_char() {
+void loop_bilnk() {
 	int i,j,n;
 	int index = 0;
 	// trun on one 7seg at a time
 	for ( i=0; i<ROW_NUM; i++ ) {
 		reset_anode( i );
-		if (( text_cnt >= 7 )||( text_cnt == i )) {
+		if (( disp_cnt >= 7 )||( disp_cnt == i )) {
   			n = pat_index[ i ];
   		} else {
   			n = INDEX_SAPCE;	
@@ -235,15 +301,22 @@ void loop_one_char() {
 	// 0.6 sec elapse
 	if ( loop_cnt > MAX_LOOP ) {
 		loop_cnt = 0;
-		text_cnt ++;
-		if ( text_cnt > 9) {
-			text_cnt = 0;
+		disp_cnt ++;
+		if ( disp_cnt > 9) {
+			disp_cnt = 0;
 		}			
 	}
 }
 
 /**
  * scroll one character
+ *
+ * FabLab
+ * ablab
+ * blab F
+ * lab Fa
+ * ab Fab
+ * b FabL
  */	
 void loop_scroll() {	 
 	int i,j,n;
@@ -271,7 +344,44 @@ void loop_scroll() {
 }
 
 /**
+ * loop sensor
+ *
+ * FabLab
+ * t   11
+ * h   22
+ * p   33
+ * l   44
+ * n   55   
+ */ 
+void loop_sensor() {
+	int i,j,n;
+	int index = 0;
+	// trun on one 7seg at a time
+	for ( i=0; i<ROW_NUM; i++ ) {
+		reset_anode( i );
+		if ( disp_cnt >= 5 ) {
+  			n = pat_index[ i ];
+  		} else {
+  			n = sensor_index[ disp_cnt ][  i ];
+  		}
+		turn_on_7seg( PAT[ n ] );
+		delay( DELAY_SEG );
+		loop_cnt ++;
+	}
+	// 1.2 sec elapse
+	if ( loop_cnt > MAX_LOOP_SENSOR ) {
+		loop_cnt = 0;
+		disp_cnt ++;
+		if ( disp_cnt > 5 ) {
+			disp_cnt = 0;
+		}			
+	}
+}
+	
+/**
  * receive a command from the serial ports
+ *
+ * #FabLab$
  */	
 void loop_serial() {
 	// if char recieve
@@ -281,9 +391,10 @@ void loop_serial() {
 	// # start
     if ( c == '#' ) {
     	Serial.print( c );
-    	is_reading = true;
+    	is_recieving = true;
     	text_index = 0;
     } 
+    if ( !is_recieving ) return;
     // $ end
     if ( c == '$'  ) { 
 		Serial.println( c );
@@ -301,11 +412,66 @@ void loop_serial() {
 		text_buf[ text_index ] = c;
 		text_index ++;
 		if ( text_index > MAX_TEXT ) {
-			is_reading = false;
+			is_recieving = false;
 		}	
     }
 }	 
 
+/**
+ * receive sensor value
+ *
+ * t11$ h22$ p33$ l44$ n66$
+ */
+void loop_serial_sensor() {
+	if ( !Serial.available() ) return;
+	char c = Serial.read();
+	// t : Temperature
+	if ( c == 't' ) {
+    	Serial.print( c );
+    	sensor_recieving = SENSOR_T;
+    	text_index = 0;
+    }
+    // h : Humidity
+    if ( c == 'h' ) {
+    	Serial.print( c );
+    	sensor_recieving = SENSOR_H;
+    	text_index = 0;
+    } 
+    // p : Air Pressure
+	if ( c == 'p' ) {
+    	Serial.print( c );
+    	sensor_recieving = SENSOR_P;
+    	text_index = 0;
+    }
+    // l : Light
+	if ( c == 'l' ) {
+    	Serial.print( c );
+    	sensor_recieving = SENSOR_L;
+    	text_index = 0;
+    }
+    // n : Noise
+	if ( c == 'n' ) {
+    	Serial.print( c );
+    	sensor_recieving = SENSOR_N;
+    	text_index = 0;
+    }
+    // $ end
+    if ( c == '$'  ) { 
+		Serial.println( c );
+		convert_index_sensor( text_buf, text_index );
+		sensor_recieving = SENSOR_NULL;
+	}
+	// 0-9 value
+	if ( c >= '0' && c <= '9' ) { 
+ 		Serial.print( c );
+		text_buf[ text_index ] = c;
+		text_index ++;
+		if ( text_index > ROW_NUM ) {
+			sensor_recieving = SENSOR_NULL;
+		}
+	} 
+}
+			
 /**
  * test segment one by one
  */
@@ -337,12 +503,37 @@ void reset_anode( int n ) {
 }
 
 /**
+ * convert sensor text string into array of index
+ */
+void convert_index_sensor( char text[], int length ) {
+	if ( sensor_recieving < SENSOR_T ) return;
+	if ( sensor_recieving > SENSOR_N ) return;
+	if ( length < 0 ) return;
+	if ( length >= ROW_NUM ) return;
+	int len = 5 - length;
+	int i, n;
+	// fill space
+	for ( i=0; i<len; i++ ) {
+		sensor_index[ sensor_recieving ][  i + 1 ] = INDEX_SAPCE;
+	}
+	int j = 1 + len;
+	// process each recieved character
+	for ( i=0; i<length; i++ ) {
+		n = search_hash( text[ i ] );
+		if ( n >= 0 ) {
+			sensor_index[ sensor_recieving ][  j  ] = n;
+			j++;
+		}
+	}
+}
+
+/**
  * convert text string into array of index
  */
 void convert_index( char text[], int length ) {
 	int i, n;
 	int j = 0;
-	// process each character
+	// process each recieved character
 	for ( i=0; i<length; i++ ) {
 		n = search_hash( text[ i ] );
 		if ( n >=0 ) {
