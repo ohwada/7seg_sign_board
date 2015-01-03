@@ -59,8 +59,7 @@ const char SENSOR_MARK[ SENSOR_NUM ] = {'T','H','P','L','N'};
 // 7 Seg       A B C D E F G p
 // Ardunino 6 5 4 3 2 8 9 7
 const int CATHODE[SEG_NUM] = {6,5,4,3,2,8,9,7};
-//const int ANODE[ROW_NUM] = {10,11,12,13, A0, A1};
-const int ANODE[ROW_NUM] = {A1,A0,13,12,11,10};
+const int ANODE[ROW_NUM] = {A5,A4,A3,A2,A1,A0};
 
 // test pattern
 char SEG[][SEG_NUM] = {
