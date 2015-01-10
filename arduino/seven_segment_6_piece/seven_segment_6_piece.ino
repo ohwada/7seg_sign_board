@@ -28,11 +28,13 @@
 
 // 0 : scroll
 // 1 : blink
-#define MODE_BLINK  0
+//#define MODE_BLINK  0
+#define MODE_BLINK  1
 
 // 0 : scroll
 // 1 : sensor
-#define MODE_SENSOR  1
+//#define MODE_SENSOR  1
+#define MODE_SENSOR  0
 
 #define SERIAL_SPEED  9600 
 #define SEG_NUM  8
@@ -249,13 +251,15 @@ void setup() {
 	}
 	for ( i=0; i<SENSOR_NUM; i++ ) {
 		sensor_index[ i ][ 0 ] = search_hash( SENSOR_MARK[ i ] );
-	}			  	  	  	  	  	  	  	  	  	  	  	  	  	  	             
+	}
+//	turn_on_fill_7seg( 0 );			  	  	  	  	  	  	  	  	  	  	  	  	  	  	             
 }
 
 /**
  * === loop ===
  */ 
 void loop() {
+//	loop_test();
 	#if MODE_TEXT
 		loop_serial();
 	#endif
@@ -571,6 +575,17 @@ void turn_on_7seg( char p[] ) {
   		}
 	}  
 }	
+
+/**
+ * turn_on_fill_7seg
+ */
+void turn_on_fill_7seg( int n ) {  
+	digitalWrite( ANODE[ n ], HIGH );
+	int i;
+  	for ( i=0; i<SEG_NUM; i++ ) {
+		digitalWrite( CATHODE[ i ], LOW ); 
+	}
+}
 
 /**
  * write eeprom
